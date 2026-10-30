@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "魔搭连接器",
+    "description": "把魔搭社区（ModelScope）接入 DeepSeek Harness：对话栏显示剩余魔粒，插件设置页填访问令牌并勾选要发布的模型。"
+  }
+}

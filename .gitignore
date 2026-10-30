@@ -1,0 +1,11 @@
+node_modules/
+*.log
+
+# Local-only working notes and probe artifacts
+NOTES.md
+prices-test.json
+tiers-probe1.json
+tools/
+
+.DS_Store
+Thumbs.db

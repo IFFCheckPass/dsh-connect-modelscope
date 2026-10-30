@@ -1,0 +1,20 @@
+﻿{
+    "scrapedAt":  "2026-10-30T11:58:02.3350294+08:00",
+    "models":  [
+                   {
+                       "id":  "deepseek-ai/DeepSeek-V4.1-Flash",
+                       "cost":  null,
+                       "note":  "short-dom"
+                   },
+                   {
+                       "id":  "deepseek-ai/DeepSeek-V4.1-Flash-1017",
+                       "cost":  null,
+                       "note":  "short-dom"
+                   },
+                   {
+                       "id":  "deepseek-ai/DeepSeek-V4-Flash-0731",
+                       "cost":  null,
+                       "note":  "short-dom"
+                   }
+               ]
+}

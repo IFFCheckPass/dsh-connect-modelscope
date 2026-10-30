@@ -1,0 +1,3 @@
+- insert:
+    - id: dsh-connect-modelscope
+      name: 'dsh-connect-modelscope'
