@@ -81,6 +81,10 @@ prices.json         可选的单价表（当前为空，见「已知限制」）
 
 ## 版本记录
 
+### 0.2.1
+
+- peer 范围按插件市场指南加显式预发布分支：`>=0.1.7-rc.1 <0.2.0-0 || >=0.2.0-rc.1 <0.3.0-0`。node-semver 的规则会静默排除不带同元组预发布比较符的 rc 构建，旧写法在 DeepSeek Harness 出 `0.2.0-rc.*` 时会让用户 `ERESOLVE`；纯元数据改动，已对 `0.1.7-rc.5 / 0.1.7 / 0.2.0-rc.1 / 0.2.0` 逐一验证。
+
 ### 0.2.0
 
 - 「模型」设置页新增 ModelScope 条目：导出 settings schema（此前没有 schema，目录 join 找不到命名空间，整行被页面隐藏）；同场加 `registerModelDiscovery`，模型目录探测与 trae 同一通道。

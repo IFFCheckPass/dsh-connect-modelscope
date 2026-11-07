@@ -1,7 +1,7 @@
 {
   "name": "dsh-connect-modelscope",
   "displayName": "DSH Connect ModelScope",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "type": "module",
   "license": "MIT",
   "author": "IFFCheckPass",
@@ -52,8 +52,8 @@
     }
   },
   "peerDependencies": {
-    "@deepseek-ai/dsh-llm": ">=0.1.7-rc.1 <0.3.0-0",
-    "@deepseek-ai/dsh-llm-pi-ai": ">=0.1.7-rc.1 <0.3.0-0",
+    "@deepseek-ai/dsh-llm": ">=0.1.7-rc.1 <0.2.0-0 || >=0.2.0-rc.1 <0.3.0-0",
+    "@deepseek-ai/dsh-llm-pi-ai": ">=0.1.7-rc.1 <0.2.0-0 || >=0.2.0-rc.1 <0.3.0-0",
     "@deepseek-ai/schemastery": ">=3.18.4 <4.0.0",
     "@earendil-works/pi-ai": ">=0.85.1 <2.0.0"
   },
