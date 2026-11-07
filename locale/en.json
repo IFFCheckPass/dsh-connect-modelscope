@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "ModelScope Connector",
-    "description": "Connects ModelScope (魔搭社区) to DeepSeek Harness: shows the remaining magicube balance in the composer, and lets you paste an access token and pick which models to publish from the plugin settings page."
+    "description": "Connects ModelScope (魔搭社区) to DeepSeek Harness: adds a ModelScope entry to the Models settings page, shows the remaining magicube balance in the composer only while a ModelScope model is selected, and lets you paste an access token and pick which models to publish from the plugin settings page."
   }
 }

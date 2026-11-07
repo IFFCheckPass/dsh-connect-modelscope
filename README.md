@@ -4,7 +4,8 @@
 
 装上之后：
 
-- **对话栏显示剩余魔粒** —— 只在当前会话选中 ModelScope 模型时出现，形如 `魔粒 550`，纯文本、无边框，点击刷新。
+- **「模型」设置页出现 ModelScope 条目** —— 与 Trae 等其他连接器并列，点进去可管理。
+- **对话栏显示剩余魔粒** —— 严格读取：只在当前会话选中的是 ModelScope 模型时出现，形如 `魔粒 550`，纯文本、无边框，点击刷新；选了别的 provider 时一律隐藏。
 - **插件设置页配置 provider** —— 粘贴 ModelScope 访问令牌，勾选要发布给 DSH 的模型（默认全部对话模型）。
 - 模型列表从 `https://api-inference.modelscope.cn/v1/models` 实时拉取，新上架的模型自动出现，不用改配置。
 
@@ -49,7 +50,7 @@ dsh plugin add dsh-connect-modelscope --profile <profile>
 ## 已知限制
 
 - **没有单价接口**：魔搭不对外提供每个模型的魔粒单价，价格只渲染在模型详情页上。因此本插件**不显示单价**，避免给出错误数字。
-- **上下文窗口是估的**：`/v1/models` 不返回 context window，插件统一报 `131072`（128K）这个保守值。窗口报小只会让 DSH 早一点压缩上下文；需要更贴近真实值时，可在 `~/.dsh/modelscope.json` 里加 `contextWindows` 覆盖：
+- **上下文窗口是估的**：`/v1/models` 不返回 context window，插件统一报 `131072`（128K）这个保守值。窗口报小只会让 DSH 早一点压缩上下文；需要更贴近真实值时，在 设置 → 模型 → ModelScope 的 `contextWindows` 里按模型覆盖（0.2.0 起，改完即生效），或在 `~/.dsh/modelscope.json` 里加 `contextWindows`（两处会合并，设置页优先）：
 
   ```json
   {
@@ -77,6 +78,15 @@ prices.json         可选的单价表（当前为空，见「已知限制」）
 - 复用官方 `@deepseek-ai/dsh-llm-pi-ai` 的 `PiAiAdapter` 与 pi-ai 的 `openAICompletionsApi`，不自写 SSE 转换。
 - 浏览器拿不到令牌：client 半只读插件自己的同源路由 `/plugins/dsh-connect-modelscope/*`，该路由只接受回环来源。
 - 模型描述符必须带正整数 `contextWindow`，否则 DSH 会用 `INVALID_MODEL_CONTEXT` 拒掉整条 provider 路由。
+
+## 版本记录
+
+### 0.2.0
+
+- 「模型」设置页新增 ModelScope 条目：导出 settings schema（此前没有 schema，目录 join 找不到命名空间，整行被页面隐藏）；同场加 `registerModelDiscovery`，模型目录探测与 trae 同一通道。
+- 对话栏魔粒读数改为严格读取：选中 provider 无法确定或不是 ModelScope 时一律隐藏（0.1.x 在读不到选中状态时常驻显示）。
+- `contextWindows` 覆盖可以在设置页编辑（volatile，即时生效），与 `modelscope.json` 合并、设置页优先。
+- 0.1.x 的同源放行热修（Origin 的 host:port 与 Host 头一致时放行，局域网 IP 访问 GUI 时配置卡片才可用）收编进源码。
 
 ## License
 

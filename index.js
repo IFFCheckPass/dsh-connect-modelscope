@@ -13,6 +13,7 @@ import { createProvider } from '@earendil-works/pi-ai';
 import { openAICompletionsApi } from '@earendil-works/pi-ai/api/openai-completions.lazy';
 import { resolveRetryPolicy } from '@deepseek-ai/dsh-llm';
 import { PiAiAdapter } from '@deepseek-ai/dsh-llm-pi-ai';
+import z from '@deepseek-ai/schemastery';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -154,7 +155,31 @@ function sanitizeToken(raw) {
 export const name = 'dsh-connect-modelscope';
 export const inject = ['llm'];
 
-export function apply(ctx) {
+/** Degrade to identity on schemastery builds that lack `volatile()` (see dsh-connect-trae). */
+function asVolatile(schema) {
+  return typeof schema.volatile === 'function' ? schema.volatile() : schema;
+}
+
+/**
+ * Settings schema. Exporting it is what makes this plugin's settings namespace
+ * exist — the namespace key IS the loader entry id (the same string `entryId`
+ * reads), and the Models page's directory join marks a configurable-provider
+ * row as configured ONLY when its namespace resolves. 0.1.x exported no
+ * schema, so the namespace was absent and the page hid the ModelScope row
+ * entirely, even though the route was live.
+ *
+ * `contextWindows` is the same per-model window override map `modelscope.json`
+ * already carried; the two sources merge per key with the settings copy
+ * winning, so the map becomes editable from the settings page without forking
+ * the file format. Volatile, so an edit applies live without a fiber restart.
+ */
+export const Config = z.object({
+  contextWindows: asVolatile(z.dict(z.number().step(1).min(1)).default({}).description(
+    '每个模型的有效上下文窗口覆盖，键为模型 id（如 {"deepseek-ai/DeepSeek-V4.1": 262144}）。目录里的 131072 只是保守占位，知道真实窗口的模型在这里填。',
+  )),
+});
+
+export function apply(ctx, dshConfig) {
   const prices = new Map();
   for (const row of loadPriceTable()) {
     if (!row || typeof row.id !== 'string') continue;
@@ -213,6 +238,31 @@ export function apply(ctx) {
   }
 
   config = readConfig();
+
+  /**
+   * Peel one `{get(): T}` live reference, the shape DSH hands a
+   * volatile-marked settings field back as (same protocol
+   * dsh-connect-trae's `unwrapVolatile` follows). Spreading the reference
+   * instead would silently produce `{ get: fn }`.
+   */
+  function unwrapVolatile(value) {
+    if (value !== null && typeof value === 'object' && typeof value.get === 'function') return value.get();
+    return value;
+  }
+
+  /**
+   * Effective window overrides: `modelscope.json` merged with the settings-page
+   * map, the settings copy winning per key (an empty settings map never
+   * clobbers the file). Read live: cordis hands `apply` the schema-resolved
+   * config and volatile edits update the same fiber config, so a settings edit
+   * lands on the next catalog build without a restart.
+   */
+  function mergedContextWindows() {
+    const fromSettings = unwrapVolatile(dshConfig?.contextWindows);
+    if (!fromSettings || typeof fromSettings !== 'object') return config.contextWindows;
+    if (!config.contextWindows) return fromSettings;
+    return { ...config.contextWindows, ...fromSettings };
+  }
 
   /* ----------------------------------------------------------- credentials */
 
@@ -310,7 +360,7 @@ export function apply(ctx) {
       input: ['text'],
       // Required: DSH rejects a route whose contextWindow is not a positive
       // integer, so this field is never omitted.
-      contextWindow: contextWindowOf(model.id, config.contextWindows),
+      contextWindow: contextWindowOf(model.id, mergedContextWindows()),
       cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
       reasoning: false,
     }));
@@ -366,6 +416,11 @@ export function apply(ctx) {
     displayName: PROVIDER_NAME,
     settingsNs: entryId,
     settingsPath: [],
+    // Same answer trae gives: the adapter knows this route as its own, not
+    // because user configuration declared it. `declared === true` is the
+    // hand-declared pi-ai route shape and would offer reasoning-level editors
+    // this adapter has no use for.
+    declared: false,
   };
 
   ctx.effect(() => {
@@ -380,6 +435,36 @@ export function apply(ctx) {
     return () => {
       try {
         directory();
+      } catch {}
+    };
+  });
+
+  // Serve the model directory the Models page probes when it needs this
+  // provider's models (the same seam dsh-connect-trae registers). The upstream
+  // catalog is free to read, so a forced refresh is cheap; a failure falls
+  // back to the cached catalog inside loadCatalog itself.
+  ctx.effect(() => {
+    if (typeof ctx.llm.registerModelDiscovery !== 'function') return;
+    let discovery;
+    try {
+      discovery = ctx.llm.registerModelDiscovery(entryId, async (request, signal) => {
+        void request;
+        void signal;
+        await loadCatalog(true);
+        return enabledModels().map((model) => ({
+          id: model.id,
+          name: displayName(model.id, model.price),
+          contextWindow: contextWindowOf(model.id, mergedContextWindows()),
+          inputModalities: ['text'],
+        }));
+      });
+    } catch (error) {
+      console.error('[dsh-connect-modelscope] model discovery registration failed', error);
+      return;
+    }
+    return () => {
+      try {
+        discovery();
       } catch {}
     };
   });
@@ -440,7 +525,15 @@ export function apply(ctx) {
     const origin = req.headers.origin;
     if (origin === undefined) return true;
     try {
-      const { hostname } = new URL(origin);
+      const parsed = new URL(origin);
+      // Same-host origins are the GUI itself (e.g. http://192.168.2.60:5470
+      // served over the LAN): the browser attaches an Origin to same-origin
+      // POSTs, and refusing them breaks the config card for every non-localhost
+      // visitor. The Host header names the GUI the page came from, so an Origin
+      // whose host:port equals it is same-origin by construction. This check
+      // shipped as a 0.1.x server-side hotfix and is now in source.
+      if (typeof req.headers.host === 'string' && req.headers.host !== '' && parsed.host === req.headers.host) return true;
+      const hostname = parsed.hostname;
       return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]' || hostname === '::1';
     } catch {
       return false;
@@ -478,7 +571,7 @@ export function apply(ctx) {
           id: model.id,
           name: displayName(model.id, model.price),
           price: model.price ?? null,
-          contextWindow: contextWindowOf(model.id, config.contextWindows),
+          contextWindow: contextWindowOf(model.id, mergedContextWindows()),
           enabled: config.enabledModelIds === null || config.enabledModelIds.includes(model.id),
         })),
         incompatible: catalog.models

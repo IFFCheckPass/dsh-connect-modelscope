@@ -7,9 +7,9 @@
  * 1. `conversation.input.left` — a plain-text magicube readout, `魔粒 550`. The
  *    form follows dsh-connect-trae's composer readout: no border, no fill at
  *    rest, 12px tertiary text, tabular figures. It is secondary information and
- *    must not shout at the composer row. It is NOT gated on the selected
- *    provider: the magicubes belong to the account, so the readout stays useful
- *    while another provider is selected.
+ *    must not shout at the composer row. It IS gated on the selected provider:
+ *    magicubes only pay for ModelScope calls, so the readout renders only while
+ *    a ModelScope model is selected (0.1.x stayed visible everywhere).
  * 2. `plugins.bundle.config` — the provider configuration card: paste the
  *    access token, tick which models to publish.
  */
@@ -156,11 +156,13 @@ window.__ModuleLoader__.load({
         };
       }, [load]);
 
-      // Magicubes only pay for ModelScope calls, so the readout belongs to a
-      // ModelScope selection — the same rule dsh-connect-trae applies to its own
-      // providers. When the projection cannot say who is selected, the readout
-      // stays visible rather than guessing.
-      if (provider !== undefined && provider !== PROVIDER_ID) return null;
+      // Strict read: magicubes only pay for ModelScope calls, so the readout
+      // belongs to a ModelScope selection — the same rule dsh-connect-trae
+      // applies to its own providers. When the projection cannot say who is
+      // selected (a fresh page, a host that serves no modelSelection), the
+      // readout hides rather than guessing visible: 0.1.x treated "unknown"
+      // as "keep showing", which is why it appeared on every page.
+      if (provider !== PROVIDER_ID) return null;
 
       const balance = state?.balance ?? {};
       const available = balance.available;
